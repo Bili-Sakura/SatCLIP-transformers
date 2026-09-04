@@ -1,0 +1,13 @@
+{
+  "image_processor_type": "SatCLIPImageProcessor",
+  "image_size": 256,
+  "in_channels": 13,
+  "scale_factor": 10000.0,
+  "insert_b10_band": true,
+  "do_center_crop": false,
+  "do_resize": false,
+  "auto_map": {
+    "AutoImageProcessor": "satclip.image_processing_satclip.SatCLIPImageProcessor",
+    "AutoProcessor": "satclip.processing_satclip.SatCLIPProcessor"
+  }
+}
