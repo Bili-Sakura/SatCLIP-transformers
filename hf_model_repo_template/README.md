@@ -20,17 +20,22 @@ This folder is a Hugging Face model-repo-style template for loading SatCLIP with
 ## Example usage
 
 ```python
-from transformers import AutoModel, AutoConfig, pipeline
+from transformers import AutoModel, AutoConfig
+from transformers.dynamic_module_utils import get_class_from_dynamic_module
 
 repo_id = "<your-namespace>/<your-satclip-model>"
 config = AutoConfig.from_pretrained(repo_id, trust_remote_code=True)
 model = AutoModel.from_pretrained(repo_id, trust_remote_code=True)
 
-pipe = pipeline(
-    task="feature-extraction",
+PipelineClass = get_class_from_dynamic_module(
+    "pipeline_satclip.SatCLIPCoordinatePipeline",
+    repo_id,
+)
+pipe = PipelineClass(
     model=model,
     tokenizer=None,
-    trust_remote_code=True,
+    feature_extractor=None,
+    image_processor=None,
 )
 
 emb = pipe([[12.5, 48.1], [-73.99, 40.73]])
