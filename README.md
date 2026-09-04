@@ -112,6 +112,20 @@ with torch.no_grad():
     emb = model(c.double().to(device)).detach().cpu()
 ```
 
+## Native Transformers-style inference
+
+This repository now includes a self-contained `src/satclip_transformers` package with:
+- `SatCLIPConfig` (`PretrainedConfig`)
+- `SatCLIPModel` (`PreTrainedModel`)
+- `SatCLIPCoordinatePipeline` (custom `transformers.Pipeline`)
+
+It also includes `hf_model_repo_template/`, a Hugging Face model-repo-style folder with:
+- `README.md`
+- `config.json` (`auto_map` for remote code)
+- `custom_code/` (configuration/modeling/pipeline code)
+
+This allows packaging SatCLIP for inference with native `transformers` + `trust_remote_code=True`, without depending on this repository layout.
+
 ## Examples
 
 Examples on how to obtain and use pretrained SatCLIP embeddings can be found in the `notebooks` folder. We provide notebooks (optimized for use with Google Colab) for the following use cases.
