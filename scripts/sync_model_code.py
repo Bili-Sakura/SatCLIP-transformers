@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Sync src/satclip custom code into model_repo subdirectories."""
+"""Sync src/satclip custom code into self-contained variant subfolders."""
 
 import argparse
 import shutil
 from pathlib import Path
 
 
-def sync_model_code(model_repo_root: Path, src_pkg: Path) -> None:
-    for model_dir in sorted(model_repo_root.glob("SatCLIP-*")):
-        if not model_dir.is_dir():
+def sync_variant_code(repo_root: Path, src_pkg: Path) -> None:
+    for variant_dir in sorted(repo_root.glob("SatCLIP-*")):
+        if not variant_dir.is_dir():
             continue
-        dst = model_dir / "satclip"
+        dst = variant_dir / "satclip"
         if dst.exists():
             shutil.rmtree(dst)
         shutil.copytree(
@@ -24,10 +24,10 @@ def sync_model_code(model_repo_root: Path, src_pkg: Path) -> None:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--model-repo",
+        "--repo-root",
         type=Path,
-        default=Path(__file__).resolve().parents[1] / "model_repo",
-        help="Path to model_repo directory",
+        default=Path(__file__).resolve().parents[1],
+        help="Path to BiliSakura/SatCLIP-transformers repository root",
     )
     parser.add_argument(
         "--src",
@@ -36,7 +36,7 @@ def main():
         help="Path to src/satclip package",
     )
     args = parser.parse_args()
-    sync_model_code(args.model_repo, args.src)
+    sync_variant_code(args.repo_root, args.src)
 
 
 if __name__ == "__main__":

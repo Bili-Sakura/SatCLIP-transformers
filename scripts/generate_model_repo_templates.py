@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Generate Hugging Face model repo templates for all SatCLIP variants."""
+"""Generate self-contained Hugging Face variant subfolders for BiliSakura/SatCLIP-transformers."""
 
 import json
 from pathlib import Path
+
+REPO_ID = "BiliSakura/SatCLIP-transformers"
 
 BASE_CONFIG = {
     "architectures": ["SatCLIPModel"],
@@ -12,7 +14,14 @@ BASE_CONFIG = {
         "AutoImageProcessor": "satclip.image_processing_satclip.SatCLIPImageProcessor",
         "AutoProcessor": "satclip.processing_satclip.SatCLIPProcessor",
     },
+    "custom_pipelines": {
+        "feature-extraction": {
+            "impl": "satclip.pipeline_satclip.SatCLIPFeatureExtractionPipeline",
+            "pt": ["AutoModel"],
+        }
+    },
     "model_type": "satclip",
+    "pipeline_tag": "feature-extraction",
     "torch_dtype": "float32",
     "transformers_version": "4.40.0",
     "embed_dim": 512,
@@ -55,46 +64,102 @@ VARIANTS = {
     "SatCLIP-ViT16-L40": {"vision_layers": "moco_vit16", "legendre_polys": 40},
 }
 
+README_TEMPLATE = """---
+library_name: transformers
+license: mit
+tags:
+  - satclip
+  - geospatial
+  - satellite-imagery
+  - clip
+  - location-encoder
+pipeline_tag: feature-extraction
+base_model: {repo_id}
+---
+
+# {name}
+
+SatCLIP checkpoint with **{backbone}** vision encoder and **L={legendre_polys}** spherical harmonics location encoding.
+
+Part of [{repo_id}](https://huggingface.co/{repo_id}) — load via the `subfolder` argument.
+
+## Usage
+
+```python
+from transformers import AutoModel, pipeline
+
+model = AutoModel.from_pretrained(
+    "{repo_id}",
+    subfolder="{name}",
+    trust_remote_code=True,
+)
+
+extractor = pipeline(
+    "feature-extraction",
+    model=model,
+    trust_remote_code=True,
+)
+
+# Location embeddings (default modality)
+emb = extractor({{"longitude": 10.5, "latitude": 48.1}}, return_tensors=True)
+print(emb.shape)  # torch.Size([1, 512])
+
+# Image embeddings
+# emb = extractor(image, modality="image", return_tensors=True)
+```
+
+## Files
+
+| File | Description |
+| --- | --- |
+| `config.json` | Model hyperparameters and `auto_map` |
+| `preprocessor_config.json` | Sentinel-2 image preprocessing |
+| `model.safetensors` | Model weights (after checkpoint conversion) |
+| `satclip/` | Custom Transformers-compatible code |
+"""
+
 
 def main():
-    repo_root = Path(__file__).resolve().parents[1] / "model_repo"
-    src_pkg = Path(__file__).resolve().parents[1] / "src" / "satclip"
+    repo_root = Path(__file__).resolve().parents[1]
+    src_pkg = repo_root / "src" / "satclip"
 
     for name, overrides in VARIANTS.items():
-        model_dir = repo_root / name
-        model_dir.mkdir(parents=True, exist_ok=True)
+        variant_dir = repo_root / name
+        variant_dir.mkdir(parents=True, exist_ok=True)
 
         config = {**BASE_CONFIG, **overrides}
-        with open(model_dir / "config.json", "w", encoding="utf-8") as f:
+        with open(variant_dir / "config.json", "w", encoding="utf-8") as f:
             json.dump(config, f, indent=2)
             f.write("\n")
 
-        with open(model_dir / "preprocessor_config.json", "w", encoding="utf-8") as f:
+        with open(variant_dir / "preprocessor_config.json", "w", encoding="utf-8") as f:
             json.dump(PREPROCESSOR_CONFIG, f, indent=2)
             f.write("\n")
 
-        dst_pkg = model_dir / "satclip"
-        if not dst_pkg.exists():
+        backbone = overrides["vision_layers"].replace("moco_", "").upper()
+        readme = README_TEMPLATE.format(
+            repo_id=REPO_ID,
+            name=name,
+            backbone=backbone,
+            legendre_polys=overrides["legendre_polys"],
+        )
+        with open(variant_dir / "README.md", "w", encoding="utf-8") as f:
+            f.write(readme)
+
+        dst_pkg = variant_dir / "satclip"
+        if dst_pkg.exists():
             import shutil
 
-            shutil.copytree(
-                src_pkg,
-                dst_pkg,
-                ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
-            )
+            shutil.rmtree(dst_pkg)
+        import shutil
 
-        readme = model_dir / "README.md"
-        if not readme.exists():
-            backbone = overrides["vision_layers"].replace("moco_", "").upper()
-            readme.write_text(
-                f"# {name}\n\n"
-                f"SatCLIP checkpoint with {backbone} vision encoder and L={overrides['legendre_polys']} "
-                f"spherical harmonics location encoding.\n\n"
-                f"See [SatCLIP-ResNet18-L10](../SatCLIP-ResNet18-L10/README.md) for usage instructions.\n",
-                encoding="utf-8",
-            )
+        shutil.copytree(
+            src_pkg,
+            dst_pkg,
+            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+        )
 
-        print(f"Generated template: {model_dir}")
+        print(f"Generated {variant_dir}")
 
 
 if __name__ == "__main__":

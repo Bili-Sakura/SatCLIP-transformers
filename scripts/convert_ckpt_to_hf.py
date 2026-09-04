@@ -80,7 +80,14 @@ def convert_checkpoint(
         "AutoImageProcessor": "satclip.image_processing_satclip.SatCLIPImageProcessor",
         "AutoProcessor": "satclip.processing_satclip.SatCLIPProcessor",
     }
+    config.custom_pipelines = {
+        "feature-extraction": {
+            "impl": "satclip.pipeline_satclip.SatCLIPFeatureExtractionPipeline",
+            "pt": ["AutoModel"],
+        }
+    }
     config.architectures = ["SatCLIPModel"]
+    config.pipeline_tag = "feature-extraction"
 
     model = SatCLIPModel(config)
     state_dict = load_lightning_state_dict(str(ckpt_path))
